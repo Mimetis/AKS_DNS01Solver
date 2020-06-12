@@ -1,0 +1,23 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: youremail@youremail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - dns01:
+        azuredns:
+          clientID: appid000-aaaa-bbbb-cccc-dddddddddddd
+          clientSecretSecretRef:
+            name: azuredns-config
+            key: client-secret
+          subscriptionID: subid000-eeee-ffff-gggg-hhhhhhhhhhh
+          tenantID: tenant00-aaaa-bbbb-cccc-dddddddddddd
+          resourceGroupName: rgdns
+          hostedZoneName: vote.dotmim.com
+          # Azure Cloud Environment, default to AzurePublicCloud
+          environment: AzurePublicCloud
