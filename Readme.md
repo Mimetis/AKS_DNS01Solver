@@ -1,4 +1,4 @@
-# Using DNS solver within an Azure Kubernetes Services cluster, using CertManager and Let's Encrypt to secure the cluster and be able to close port 80
+# DNS01 Challenge within AKS and Azure DNS Zone
 
 ## TL;DR;
 
@@ -225,7 +225,111 @@ spec:
               servicePort: 80
 ```
 
+### Debug
+
+Check that your certificate has been correctly issued, using the describe command on objects `Certificate`, `CertificateRequest` and `Order` :
+
+*(Once again, removing unrelevant part, for clarity)*
+
+``` sh
+
+kubectl describe cert tls-secret
+Name:         tls-secret
+Kind:         Certificate
+Metadata:
+  Owner References:
+    Kind:                  Ingress
+    Name:                  vote-ingress
+Spec:
+  Dns Names:
+    vote.dotmim.com
+  Issuer Ref:
+    Group:      cert-manager.io
+    Kind:       ClusterIssuer
+    Name:       letsencrypt-staging
+  Secret Name:  tls-secret
+Events:
+  Type    Reason     Age   From          Message
+  ----    ------     ----  ----          -------
+  Normal  Requested  8s    cert-manager  Created new CertificateRequest resource "tls-secret-1150149038"
+```
+
+The Certificate request:
+
+``` sh
+kubectl describe  CertificateRequest tls-secret-1150149038
+Name:         tls-secret-1150149038
+Kind:         CertificateRequest
+Metadata:
+  Owner References:
+    Kind:                  Certificate
+    Name:                  tls-secret
+Spec:
+  Issuer Ref:
+    Group:  cert-manager.io
+    Kind:   ClusterIssuer
+    Name:   letsencrypt-staging
+Events:
+  Type    Reason        Age   From          Message
+  ----    ------        ----  ----          -------
+  Normal  OrderCreated  28s   cert-manager  Created Order resource default/tls-secret-1150149038-248511818
+  Normal  OrderPending  28s   cert-manager  Waiting on certificate issuance from order default/tls-secret-1150149038-248511818: ""
+```
+
+And eventually the Order :
+
+``` sh
+kubectl describe order tls-secret-1150149038-248511818
+Name:         tls-secret-1150149038-248511818
+Kind:         Order
+Metadata:
+  Owner References:
+    Kind:                  CertificateRequest
+    Name:                  tls-secret-1150149038
+Spec:
+  Dns Names:
+    vote.dotmim.com
+  Issuer Ref:
+    Group:  cert-manager.io
+    Kind:   ClusterIssuer
+    Name:   letsencrypt-staging
+Status:
+  Certificate:   LS0tLS1CRUdJTiBDRVJUSU....
+Events:
+  Type    Reason    Age   From          Message
+  ----    ------    ----  ----          -------
+  Normal  Created   113s  cert-manager  Created Challenge resource "tls-secret-1150149038-248511818-2518637675" for domain "vote.dotmim.com"
+  Normal  Complete  49s   cert-manager  Order completed successfully
+```
+
+Once you reached that point, your certificate has been issued correctly. You can check once again the certificate and confirms it's correcty configured and downloaded in your cluster:
+
+``` sh
+(base) spertus@MSI2019:~/cert$ kubectl describe cert tls-secret
+Name:         tls-secret
+Kind:         Certificate
+Metadata:
+Spec:
+Status:
+  Conditions:
+    Last Transition Time:  2020-06-12T09:57:10Z
+    Message:               Certificate is up to date and has not expired
+    Reason:                Ready
+  Not After:               2020-09-10T08:57:10Z
+Events:
+  Type    Reason     Age                 From          Message
+  ----    ------     ----                ----          -------
+  Normal  Requested  10m                 cert-manager  Created new CertificateRequest resource "tls-secret-1150149038"
+  Normal  Issued     9m25s (x2 over 8d)  cert-manager  Certificate issued successfully
+```
+
+## Last step: Redirection
+
+Now that you're able to reach your https entry point, don't forget to redirect all the trafic to your AKS cluster:
+
+![Redirect to AKS](./assets/record.png)
 
 
+As you can see, I'm able to reach my vote application, using an **HTTPS** connection and a staging **Let's Encrypt** certificate !
 
-
+![Web site using FAKE LE certificate](./assets/votewebsite.png)

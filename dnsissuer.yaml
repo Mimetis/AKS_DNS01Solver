@@ -6,8 +6,10 @@ spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
     email: youremail@youremail.com
+    # Name of a secret used to store the ACME account private key
     privateKeySecretRef:
       name: letsencrypt
+    # ACME DNS-01 provider configurations
     solvers:
     - dns01:
         azuredns:
